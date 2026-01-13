@@ -1,4 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai"; 
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!); 
 
 
 interface CodeSuggestionRequest {
@@ -139,47 +142,28 @@ Generate suggestion:`;
 
 async function generateSuggestion(prompt: string): Promise<string> {
   try {
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/bigcode/starcoder",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.HF_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 200,
-            temperature: 0.4,
-            return_full_text: false,
-          },
-        }),
+    // 1. Select the model (Flash is best for speed in editors)
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.2, // Low for accuracy
+        maxOutputTokens: 300,
       }
-    );
+    });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(errText);
-    }
+    // 2. Send the prompt you already built
+    const result = await model.generateContent(prompt);
+    let suggestion = result.response.text();
 
-    const data = await response.json();
-
-    // Hugging Face returns an array
-    let suggestion =
-      Array.isArray(data) && data[0]?.generated_text
-        ? data[0].generated_text
-        : "";
-
-    // Remove markdown formatting if present
+    // 3. Keep your existing cleanup logic
     if (suggestion.includes("```")) {
-      const match = suggestion.match(/```[\w]*\n?([\s\S]*?)```/);
-      suggestion = match ? match[1].trim() : suggestion;
+      const codeMatch = suggestion.match(/```[\w]*\n?([\s\S]*?)```/);
+      suggestion = codeMatch ? codeMatch[1].trim() : suggestion;
     }
 
-    return suggestion.trim();
+    return suggestion;
   } catch (error) {
-    console.error("Hugging Face AI error:", error);
+    console.error("Gemini API error:", error);
     return "// AI suggestion unavailable";
   }
 }

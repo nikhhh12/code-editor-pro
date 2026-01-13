@@ -1,4 +1,14 @@
 "use client";
+
+import dynamic from 'next/dynamic';
+
+const WebContainerPreview = dynamic(
+  () => import('@/modules/webcontainers/components/webcontainer-preview'),
+  { ssr: false }
+);
+
+
+
 import { Button } from "@/components/ui/ui/button";
 import {
   DropdownMenu,
@@ -22,12 +32,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/ui/tooltip";
 import LoadingStep from "@/modules/playground/components/loader";
-import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
-// import {PlaygroundEditor} from "@/modules/playground/components/playground-editor";
+import {PlaygroundEditor} from "@/modules/playground/components/playground-editor";
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
 import ToggleAI from "@/modules/playground/components/toggle-ai";
 import { useAISuggestions } from "@/modules/playground/hooks/useAISuggestion";
-// import { useAISuggestions } from "@/modules/playground/hooks/useAISuggestion";
 import { useFileExplorer } from "@/modules/playground/hooks/useFileExplorer";
 import { usePlayground } from "@/modules/playground/hooks/usePlayground";
 import { findFilePath } from "@/modules/playground/lib";
@@ -35,7 +43,7 @@ import {
   TemplateFile,
   TemplateFolder,
 } from "@/modules/playground/lib/path-to-json";
-import WebContainerPreview from "@/modules/webcontainers/components/webcontainer-preview";
+// import WebContainerPreview from "@/modules/webcontainers/components/webcontainer-preview";
 import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
 import {
   AlertCircle,
@@ -384,7 +392,7 @@ const MainPlaygroundPage = () => {
 
               <div className="flex items-center gap-1">
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger>
                     <Button
                       size="sm"
                       variant="outline"
@@ -403,7 +411,7 @@ const MainPlaygroundPage = () => {
                       size="sm"
                       variant="outline"
                       onClick={handleSaveAll}
-                      disabled={!activeFile||!hasUnsavedChanges}
+                      disabled={!hasUnsavedChanges}
                     >
                       <Save className="h-4 w-4" /> All
                     </Button>
@@ -492,7 +500,7 @@ const MainPlaygroundPage = () => {
                 </div>
                 <div className="flex-1">
                   <ResizablePanelGroup
-                    orientation="horizontal"
+                    orientation ="horizontal"
                     className="h-full"
                   >
                     <ResizablePanel defaultSize={isPreviewVisible ? 50 : 100}>

@@ -2,6 +2,13 @@ import { db } from "@/lib/db";
 import { error } from "console";
 import { NextRequest, NextResponse } from "next/server";
 
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -22,39 +29,30 @@ async function generateAIResponse(messages: ChatMessage[]): Promise<string> {
 
 Always provide clear, practical answers. Use proper code formatting when showing examples.`;
 
-  const fullMessages = [{ role: "system", content: systemPrompt }, ...messages];
-
-  const prompt = fullMessages
-    .map((msg) => `${msg.role}: ${msg.content}`)
-    .join("\n\n");
-
   try {
-    const response = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "codellama:latest",
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7, // Controls randomness (0-1)
-          max_tokens: 1000, // Maximum response length
-          top_p: 0.9, // controls diversity
-        },
-      }),
+    // 1. Setup the model with the system instruction
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash-lite", // Pro is better for complex chat reasoning
+      systemInstruction: systemPrompt 
     });
 
-    const data = await response.json();
+    // 2. Convert your history to Gemini format (user/model)
+    // We take all messages except the very last one as history
+    const history = messages.slice(0, -1).map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
 
-    if (!data.response) {
-      throw new Error("No response from AI model");
-    }
+    // 3. Start the chat and send the latest message
+    const chat = model.startChat({ history });
+    const lastMessage = messages[messages.length - 1].content;
+    
+    const result = await chat.sendMessage(lastMessage);
+    const response = await result.response;
 
-    return data.response.trim();
+    return response.text().trim();
   } catch (error) {
-    console.error("AI generation error:", error);
+    console.error("Gemini Chat error:", error);
     throw new Error("Failed to generate AI response");
   }
 }
@@ -94,6 +92,7 @@ export async function POST(req: NextRequest) {
     //   Generate ai response
 
     const aiResponse = await generateAIResponse(messages);
+
 
 
     return NextResponse.json({
