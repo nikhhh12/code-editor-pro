@@ -144,7 +144,7 @@ async function generateSuggestion(prompt: string): Promise<string> {
   try {
     // 1. Select the model (Flash is best for speed in editors)
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.2, // Low for accuracy
         maxOutputTokens: 300,
