@@ -4,11 +4,15 @@ import { useRef, useEffect, useCallback } from "react"
 import Editor, { type Monaco } from "@monaco-editor/react"
 import { TemplateFile } from "../lib/path-to-json"
 import { configureMonaco, defaultEditorOptions, getEditorLanguage } from "../lib/editor-config"
+import * as Y from "yjs"
+import { WebsocketProvider } from "y-websocket"
+import { MonacoBinding } from "y-monaco"
 
 
 interface PlaygroundEditorProps {
-  activeFile: TemplateFile | undefined
+  activeFile: (TemplateFile & { id: string }) | undefined
   content: string
+
   onContentChange: (value: string) => void
   suggestion: string | null
   suggestionLoading: boolean
@@ -16,6 +20,13 @@ interface PlaygroundEditorProps {
   onAcceptSuggestion: (editor: any, monaco: any) => void
   onRejectSuggestion: (editor: any) => void
   onTriggerSuggestion: (type: string, editor: any) => void
+  playgroundId: string
+  currentUser: { name?: string | null; color?: string }
+}
+
+const getRandomColor = () => {
+  const colors = ['#f783ac', '#a29bfe', '#55efc4', '#81ecec', '#74b9ff', '#fab1a0', '#ffeaa7', '#e17055']
+  return colors[Math.floor(Math.random() * colors.length)]
 }
 
 export const PlaygroundEditor = ({
@@ -28,9 +39,16 @@ export const PlaygroundEditor = ({
   onAcceptSuggestion,
   onRejectSuggestion,
   onTriggerSuggestion,
+  playgroundId,
+  currentUser
 }: PlaygroundEditorProps) => {
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<Monaco | null>(null)
+
+  const docRef = useRef<Y.Doc | null>(null)
+  const providerRef = useRef<WebsocketProvider | null>(null)
+  const bindingRef = useRef<MonacoBinding | null>(null)
+  const userColorRef = useRef<string>(currentUser.color || getRandomColor())
   const inlineCompletionProviderRef = useRef<any>(null)
   const currentSuggestionRef = useRef<{
     text: string
@@ -501,6 +519,68 @@ export const PlaygroundEditor = ({
   useEffect(() => {
     updateEditorLanguage()
   }, [activeFile])
+
+  // Yjs Integration
+  useEffect(() => {
+    if (!playgroundId) return
+
+    // Initialize Yjs Doc and Provider
+    const doc = new Y.Doc()
+    const provider = new WebsocketProvider('wss://demos.yjs.dev', `code-editor-pro-${playgroundId}`, doc)
+
+    docRef.current = doc
+    providerRef.current = provider
+
+    return () => {
+      provider.disconnect()
+      doc.destroy()
+    }
+  }, [playgroundId])
+
+  useEffect(() => {
+    if (!activeFile || !editorRef.current || !docRef.current || !providerRef.current) return
+
+    // Clean up previous binding
+    if (bindingRef.current) {
+      bindingRef.current.destroy()
+      bindingRef.current = null
+    }
+
+    const doc = docRef.current
+    const provider = providerRef.current
+    const editor = editorRef.current
+    const model = editor.getModel()
+
+    if (!model) return;
+
+    const ytext = doc.getText(activeFile.id)
+
+    // Verify content sync
+    // If ytext is empty but we have local content, initialize ytext
+    if (ytext.toString() === "" && content) {
+      doc.transact(() => {
+        ytext.insert(0, content)
+      })
+    }
+
+    // Bind Yjs to Monaco
+    const binding = new MonacoBinding(ytext, model, new Set([editor]), provider.awareness)
+    bindingRef.current = binding
+
+    // Set user awareness
+    provider.awareness.setLocalStateField('user', {
+      name: currentUser.name || "Anonymous",
+      color: userColorRef.current
+    })
+
+    return () => {
+      if (bindingRef.current) {
+        bindingRef.current.destroy()
+        bindingRef.current = null
+      }
+    }
+  }, [activeFile?.id, playgroundId, currentUser]) // Re-run when file changes
+
 
   // Cleanup on unmount
   useEffect(() => {

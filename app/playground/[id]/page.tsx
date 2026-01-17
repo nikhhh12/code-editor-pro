@@ -32,7 +32,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/ui/tooltip";
 import LoadingStep from "@/modules/playground/components/loader";
-import {PlaygroundEditor} from "@/modules/playground/components/playground-editor";
+import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
 import ToggleAI from "@/modules/playground/components/toggle-ai";
 import { useAISuggestions } from "@/modules/playground/hooks/useAISuggestion";
@@ -45,6 +45,7 @@ import {
 } from "@/modules/playground/lib/path-to-json";
 // import WebContainerPreview from "@/modules/webcontainers/components/webcontainer-preview";
 import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
+import { InviteFriendsDialog } from "@/modules/playground/components/invite-friends-dialog";
 import {
   AlertCircle,
   Bot,
@@ -52,9 +53,12 @@ import {
   FolderOpen,
   Save,
   Settings,
+  UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import React, {
   useCallback,
   useEffect,
@@ -65,13 +69,14 @@ import React, {
 import { toast } from "sonner";
 
 const MainPlaygroundPage = () => {
+  const { data: session } = useSession()
   const { id } = useParams<{ id: string }>();
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
 
   const { playgroundData, templateData, isLoading, error, saveTemplateData } =
     usePlayground(id);
 
-    const aiSuggestions = useAISuggestions();
+  const aiSuggestions = useAISuggestions();
 
   const {
     setTemplateData,
@@ -199,7 +204,7 @@ const MainPlaygroundPage = () => {
       if (!latestTemplateData) return
 
       try {
-            const filePath = findFilePath(fileToSave, latestTemplateData);
+        const filePath = findFilePath(fileToSave, latestTemplateData);
         if (!filePath) {
           toast.error(
             `Could not find path for file: ${fileToSave.filename}.${fileToSave.fileExtension}`
@@ -207,13 +212,13 @@ const MainPlaygroundPage = () => {
           return;
         }
 
-   const updatedTemplateData = JSON.parse(
+        const updatedTemplateData = JSON.parse(
           JSON.stringify(latestTemplateData)
         );
 
         // @ts-ignore
-          const updateFileContent = (items: any[]) =>
-            // @ts-ignore
+        const updateFileContent = (items: any[]) =>
+          // @ts-ignore
           items.map((item) => {
             if ("folderName" in item) {
               return { ...item, items: updateFileContent(item.items) };
@@ -229,35 +234,34 @@ const MainPlaygroundPage = () => {
           updatedTemplateData.items
         );
 
-          // Sync with WebContainer
-        if (writeFileSync) {
-          await writeFileSync(filePath, fileToSave.content);
-          lastSyncedContent.current.set(fileToSave.id, fileToSave.content);
-          if (instance && instance.fs) {
-            await instance.fs.writeFile(filePath, fileToSave.content);
-          }
+        // Sync with WebContainer
+        // Sync with WebContainer
+        await writeFileSync(filePath, fileToSave.content);
+        lastSyncedContent.current.set(fileToSave.id, fileToSave.content);
+        if (instance && instance.fs) {
+          await instance.fs.writeFile(filePath, fileToSave.content);
         }
 
-           const newTemplateData = await saveTemplateData(updatedTemplateData);
+        const newTemplateData = await saveTemplateData(updatedTemplateData);
         setTemplateData(newTemplateData || updatedTemplateData);
-// Update open files
+        // Update open files
         const updatedOpenFiles = openFiles.map((f) =>
           f.id === targetFileId
             ? {
-                ...f,
-                content: fileToSave.content,
-                originalContent: fileToSave.content,
-                hasUnsavedChanges: false,
-              }
+              ...f,
+              content: fileToSave.content,
+              originalContent: fileToSave.content,
+              hasUnsavedChanges: false,
+            }
             : f
         );
         setOpenFiles(updatedOpenFiles);
 
-    toast.success(
+        toast.success(
           `Saved ${fileToSave.filename}.${fileToSave.fileExtension}`
         );
       } catch (error) {
-         console.error("Error saving file:", error);
+        console.error("Error saving file:", error);
         toast.error(
           `Failed to save ${fileToSave.filename}.${fileToSave.fileExtension}`
         );
@@ -275,7 +279,7 @@ const MainPlaygroundPage = () => {
     ]
   );
 
-    const handleSaveAll = async () => {
+  const handleSaveAll = async () => {
     const unsavedFiles = openFiles.filter((f) => f.hasUnsavedChanges);
 
     if (unsavedFiles.length === 0) {
@@ -292,16 +296,16 @@ const MainPlaygroundPage = () => {
   };
 
 
-  useEffect(()=>{
-    const handleKeyDown = (e:KeyboardEvent)=>{
-      if(e.ctrlKey && e.key === "s"){
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "s") {
         e.preventDefault()
         handleSave()
       }
     }
-     window.addEventListener("keydown", handleKeyDown);
-     return () => window.removeEventListener("keydown", handleKeyDown);
-  },[handleSave]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSave]);
 
   if (error) {
     return (
@@ -419,11 +423,18 @@ const MainPlaygroundPage = () => {
                   <TooltipContent>Save All (Ctrl+Shift+S)</TooltipContent>
                 </Tooltip>
 
-               <ToggleAI
-                isEnabled={aiSuggestions.isEnabled}
-                onToggle={aiSuggestions.toggleEnabled}
-                suggestionLoading={aiSuggestions.isLoading}
-               />
+                <ToggleAI
+                  isEnabled={aiSuggestions.isEnabled}
+                  onToggle={aiSuggestions.toggleEnabled}
+                  suggestionLoading={aiSuggestions.isLoading}
+                />
+
+                <InviteFriendsDialog playgroundId={id}>
+                  <Button size="sm" variant="outline">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Invite
+                  </Button>
+                </InviteFriendsDialog>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -500,27 +511,32 @@ const MainPlaygroundPage = () => {
                 </div>
                 <div className="flex-1">
                   <ResizablePanelGroup
-                    orientation ="horizontal"
+                    orientation="horizontal"
                     className="h-full"
                   >
                     <ResizablePanel defaultSize={isPreviewVisible ? 50 : 100}>
                       <PlaygroundEditor
                         activeFile={activeFile}
                         content={activeFile?.content || ""}
-                        onContentChange={(value) => 
-                          activeFileId && updateFileContent(activeFileId , value)
+                        onContentChange={(value) =>
+                          activeFileId && updateFileContent(activeFileId, value)
                         }
                         suggestion={aiSuggestions.suggestion}
                         suggestionLoading={aiSuggestions.isLoading}
                         suggestionPosition={aiSuggestions.position}
-                        onAcceptSuggestion={(editor , monaco)=>aiSuggestions.acceptSuggestion(editor , monaco)}
+                        onAcceptSuggestion={(editor, monaco) => aiSuggestions.acceptSuggestion(editor, monaco)}
 
-                          onRejectSuggestion={(editor) =>
+                        onRejectSuggestion={(editor) =>
                           aiSuggestions.rejectSuggestion(editor)
                         }
                         onTriggerSuggestion={(type, editor) =>
                           aiSuggestions.fetchSuggestion(type, editor)
                         }
+                        playgroundId={id}
+                        currentUser={{
+                          name: session?.user?.name,
+                          color: undefined
+                        }}
                       />
                     </ResizablePanel>
 
