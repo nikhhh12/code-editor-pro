@@ -33,6 +33,16 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  username String? @unique
+  
+  sentFriendRequests FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+
+  friends User[] @relation("UserFriends", fields: [friendIDs], references: [id])
+  friendIDs String[]
+  friendOf User[] @relation("UserFriends", fields: [friendOfIDs], references: [id])
+  friendOfIDs String[]
 }
 
 model Account {
@@ -108,7 +118,20 @@ model ChatMessage {
   content String
   createdAt DateTime  @default(now())
 
-  user  User @relation(fields: [userId] , references: [id] , onDelete: Cascade)
+  user User @relation(fields: [userId] , references: [id] , onDelete: Cascade)
 
   @@index([userId])
+} 
+
+model FriendRequest {
+  id String @id @default(cuid()) @map("_id")
+  senderId String
+  sender User @relation("SentFriendRequests", fields: [senderId], references: [id])
+  receiverId String
+  receiver User @relation("ReceivedFriendRequests", fields: [receiverId], references: [id])
+  status String @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([senderId, receiverId])
 } 

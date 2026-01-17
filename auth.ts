@@ -1,32 +1,32 @@
 import NextAuth from "next-auth"
-import {PrismaAdapter} from "@auth/prisma-adapter"; 
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import authConfig from "./auth.config";
 import { db } from "./lib/db";
 import { getUserById } from "./modules/auth/actions";
 
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  callbacks:{
-    async signIn({user,account}){
-      if(!user || !account) return false;
+  callbacks: {
+    async signIn({ user, account }) {
+      if (!user || !account) return false;
 
       const existingUser = await db.user.findUnique({
-        where:{email:user.email!}
+        where: { email: user.email! }
       })
 
-      if(!existingUser){
+      if (!existingUser) {
         const newUser = await db.user.create({
-          data:{
-            email:user.email!,
+          data: {
+            email: user.email!,
             name: user.name,
             image: user.image,
 
             accounts: {
               // @ts-ignore
-              create:{
+              create: {
                 type: account.type,
                 provider: account.provider,
-                providerAccountId:account.providerAccountId,
+                providerAccountId: account.providerAccountId,
                 refreshToken: account.refresh_token,
                 accessToken: account.access_token,
                 expiresAt: account.expires_at,
@@ -38,24 +38,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
           },
         });
-        if(!newUser) return false
+        if (!newUser) return false
       }
-      else{
+      else {
         const existingAccount = await db.account.findUnique({
           where: {
-            provider_providerAccountId:{
+            provider_providerAccountId: {
               provider: account.provider,
               providerAccountId: account.providerAccountId,
             },
           },
         });
 
-        if(!existingAccount) {
+        if (!existingAccount) {
           await db.account.create({
             data: {
               userId: existingUser.id,
               type: account.type,
-              provider:account.provider,
+              provider: account.provider,
               ProviderAccountId: account.providerAccountId,
               refreshToken: account.refresh_token,
               accessToken: account.access_token,
@@ -72,31 +72,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return true;
     },
-    async jwt({token}){
-      if(!token.sub) return token;
+    async jwt({ token }) {
+      if (!token.sub) return token;
 
       const existingUser = await getUserById(token.sub)
-      if(!existingUser) return token;
+      if (!existingUser) return token;
 
       token.name = existingUser.name;
-      token.email= existingUser.email;
-      token.role= existingUser.role;
+      token.email = existingUser.email;
+      token.role = existingUser.role;
+
+      token.username = existingUser.username;
 
       return token;
     },
-    async session({session , token}){
-      if(token.sub && session.user){
-        session.user.id=token.sub
+    async session({ session, token }) {
+      if (token.sub && session.user) {
+        session.user.id = token.sub
       }
-      
-      if(token.sub && session.user){
-        session.user.role=token.role;
+
+      if (token.sub && session.user) {
+        session.user.role = token.role;
+        // @ts-ignore
+        session.user.username = token.username;
       }
       return session;
     }
   },
-  secret:process.env.AUTH_SECRET,
-  adapter:PrismaAdapter(db),
+  secret: process.env.AUTH_SECRET,
+  adapter: PrismaAdapter(db),
   session: { strategy: "jwt" },
   ...authConfig
 });
