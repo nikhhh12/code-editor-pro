@@ -4,19 +4,23 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/ui/tabs"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/ui/avatar"
-import { UserPlus, Users, Check, X, Loader2 } from "lucide-react"
+import { UserPlus, Users, Check, X, Loader2, Code2 } from "lucide-react"
 import { searchUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, rejectFriendRequest, getFriends } from "@/modules/auth/actions/friends"
+import { getCollabInvites, respondToCollabInvite } from "@/modules/auth/actions/collab"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/ui/scroll-area"
 
 export const FriendsPopover = () => {
+    const router = useRouter()
     const [open, setOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [requests, setRequests] = useState<any[]>([])
     const [friends, setFriends] = useState<any[]>([])
+    const [invites, setInvites] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
     const [activeTab, setActiveTab] = useState("friends")
 
@@ -35,6 +39,9 @@ export const FriendsPopover = () => {
         } else if (activeTab === "friends") {
             const frnds = await getFriends()
             setFriends(frnds)
+        } else if (activeTab === "invites") {
+            const invitations = await getCollabInvites()
+            setInvites(invitations)
         }
         setLoading(false)
     }
@@ -75,12 +82,35 @@ export const FriendsPopover = () => {
         }
     }
 
+    const handleAcceptInvite = async (id: string) => {
+        const res = await respondToCollabInvite(id, "ACCEPTED")
+        if (res.error) toast.error(res.error)
+        else if (res.playgroundId) {
+            toast.success("Joining playground...")
+            setOpen(false)
+            router.push(`/playground/${res.playgroundId}`)
+        }
+    }
+
+    const handleRejectInvite = async (id: string) => {
+        const res = await respondToCollabInvite(id, "REJECTED")
+        if (res.error) toast.error(res.error)
+        else {
+            toast.success("Invite rejected")
+            refreshData()
+        }
+    }
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
                     <UserPlus className="h-5 w-5" />
                     {requests.length > 0 && (
+                        <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                    <UserPlus className="h-5 w-5" />
+                    {(requests.length > 0 || invites.length > 0) && (
                         <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500" />
                     )}
                 </Button>
@@ -91,6 +121,7 @@ export const FriendsPopover = () => {
                         <TabsList className="w-full">
                             <TabsTrigger value="friends" className="flex-1">Friends</TabsTrigger>
                             <TabsTrigger value="requests" className="flex-1">Requests {requests.length > 0 && `(${requests.length})`}</TabsTrigger>
+                            <TabsTrigger value="invites" className="flex-1">Invites {invites.length > 0 && `(${invites.length})`}</TabsTrigger>
                             <TabsTrigger value="add" className="flex-1">Add</TabsTrigger>
                         </TabsList>
                     </div>
@@ -137,6 +168,37 @@ export const FriendsPopover = () => {
                                                         <Check className="h-4 w-4" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleReject(req.id)}>
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            }
+                        </TabsContent>
+
+                        <TabsContent value="invites" className="p-4 m-0">
+                            {loading ? <div className="flex justify-center p-4"><Loader2 className="animate-spin" /></div> :
+                                invites.length === 0 ? <p className="text-center text-sm text-muted-foreground py-4">No pending invites</p> : (
+                                    <div className="space-y-3">
+                                        {invites.map(invite => (
+                                            <div key={invite.id} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={invite.sender.image || ""} />
+                                                        <AvatarFallback>{invite.sender.name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">{invite.sender.name}</span>
+                                                        <span className="text-xs text-muted-foreground">invited to code</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-green-500 hover:text-green-600 hover:bg-green-50" onClick={() => handleAcceptInvite(invite.id)}>
+                                                        <Check className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleRejectInvite(invite.id)}>
                                                         <X className="h-4 w-4" />
                                                     </Button>
                                                 </div>
