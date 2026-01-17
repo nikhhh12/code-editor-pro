@@ -36,6 +36,7 @@ import {
   SidebarRail,
 } from "@/components/ui/ui/sidebar"
 import Image from "next/image"
+import { FriendsPopover } from "@/components/dashboard/friends-popover"
 
 // Define the interface for a single playground item, icon is now a string
 interface PlaygroundData {
@@ -68,7 +69,10 @@ export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundD
         <div className="flex items-center gap-2 px-4 py-3 justify-center">
           <Image src={"/logo.svg"} alt="logo" height={60} width={60} />
         </div>
-       
+        <div className="px-4 pb-2 flex justify-center">
+          <FriendsPopover />
+        </div>
+
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -89,7 +93,7 @@ export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundD
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          
+
           </SidebarMenu>
         </SidebarGroup>
 
@@ -113,7 +117,7 @@ export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundD
                     <SidebarMenuItem key={playground.id}>
                       <SidebarMenuButton
                         asChild
-                        isActive={pathname===`/playground/${playground.id}`}
+                        isActive={pathname === `/playground/${playground.id}`}
                         tooltip={playground.name}
                       >
                         <Link href={`/playground/${playground.id}`}>
@@ -146,7 +150,7 @@ export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundD
                     <SidebarMenuItem key={playground.id}>
                       <SidebarMenuButton
                         asChild
-                        isActive={pathname===`playground/${playground.id}`}
+                        isActive={pathname === `playground/${playground.id}`}
                         tooltip={playground.name}
                       >
                         <Link href={`/playground/${playground.id}`}>
