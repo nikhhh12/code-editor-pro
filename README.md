@@ -36,6 +36,26 @@ Unlike standard boilerplates, this project uses a modular design. Logic for the 
 - **Virtual File System (VFS):** Full CRUD support for files and folders with real-time persistence to MongoDB.
 - **In-Browser Execution:** Run Node.js environments and live development servers directly in the browser via WebContainers.
 
+
+### Collaboration (Live Code Playground)
+
+Code Editor Pro supports an invite-based collaboration system for the Live Code playground, allowing authenticated users to securely collaborate on shared coding sessions.
+
+#### Highlights
+- Unique user identity using system-generated user IDs and usernames  
+- Invite-based access control for playground collaboration  
+- Accept or reject collaboration requests via dashboard UI  
+- Secure backend workflows to manage collaboration state  
+- Persistent collaboration data managed using Prisma + MongoDB  
+
+#### Workflow
+1. Each user is assigned a unique user ID and username at account creation.  
+2. A user can invite another registered user to collaborate on a Live Code playground.  
+3. The invited user can accept or reject the request from their dashboard.  
+4. Once accepted, collaborators gain shared access to the playground environment.  
+
+This design ensures controlled access, clear ownership, and a scalable foundation for future real-time collaboration enhancements.
+
 ---
 
 ## Installation and Setup
